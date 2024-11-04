@@ -1,0 +1,22 @@
+{
+    "standard": {
+        "availability": 15,
+        "price_per_night": 150.00
+    },
+    "deluxe": {
+        "availability": 3,
+        "price_per_night": 200.00
+    },
+    "executive_suite": {
+        "availability": 2,
+        "price_per_night": 350.00
+    },
+    "family_suite": {
+        "availability": 1,
+        "price_per_night": 400.00
+    },
+    "presidential_suite": {
+        "availability": 1,
+        "price_per_night": 1000.00
+    }
+}

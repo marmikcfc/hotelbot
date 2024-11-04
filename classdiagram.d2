@@ -1,0 +1,157 @@
+# External Services Layer
+ExternalServiceConnector: {
+  shape: class
+  
+  # Properties
+  -baseUrl: String
+  -apiKey: String
+  -timeout: Integer
+  
+  # Methods
+  +connect(): Connection
+  +handleError(error: Error): ErrorResponse
+  +validateResponse(response: Any): Boolean
+}
+
+KnowcrossConnector: {
+  shape: class
+  
+  # Properties
+  -housekeepingEndpoints: Map
+  -credentials: KnowcrossCredentials
+  
+  # Methods
+  +getRoomStatus(roomNumber: String): RoomStatus
+  +getHousekeepingTasks(): List<Task>
+  +updateRoomStatus(roomNumber: String, status: String): Response
+}
+
+SimphonyConnector: {
+  shape: class
+  
+  # Properties
+  -menuItems: Map
+  -orderEndpoints: Map
+  
+  # Methods
+  +getMenuItems(): List<MenuItem>
+  +placeOrder(order: Order): OrderResponse
+  +getOrderStatus(orderId: String): OrderStatus
+}
+
+SinixConnector: {
+  shape: class
+  
+  # Properties
+  -propertyId: String
+  -inventoryEndpoints: Map
+  
+  # Methods
+  +checkRoomAvailability(dates: DateRange): AvailabilityResponse
+  +getRoomDetails(roomType: String): RoomDetails
+  +getBookingDetails(bookingId: String): BookingDetails
+}
+
+# Existing Components
+FastAPIServer: {
+  shape: class
+  -host: String
+  -port: Integer
+  +start_server(): void
+}
+
+WebhookController: {
+  shape: class
+  +post_whatsapp_group(payload: WhatsAppGroupPayload): Response
+  +post_whatsapp_personal(payload: WhatsAppPersonalPayload): Response
+  +post_digital_gm(payload: DigitalGMPayload): Response
+}
+
+Agent: {
+  shape: class
+  -message: Message
+  +execute(message: Message): Response
+}
+
+AskTwinGMBot: {
+  shape: class
+  -employeeQueries: Map
+  -knowledgeBase: Database
+  +handleEmployeeQuery(): Response
+  +accessKnowledgeBase(): Information
+}
+
+CustomerServiceBot: {
+  shape: class
+  -customerQueries: Map
+  -bookingSystem: BookingSystem
+  +handleCustomerQuery(): Response
+  +checkAvailability(): AvailabilityStatus
+  +processBooking(): BookingStatus
+}
+
+FastFingerBot: {
+  shape: class
+  -whatsappGroup: String
+  -availableRooms: Integer
+  +validateRoomRequest(): Boolean
+  +sendWhatsappResponse(): void
+}
+
+# Service Response Models
+ServiceResponse: {
+  shape: class
+  +status: String
+  +data: Any
+  +error: Error
+}
+
+# External Service Config
+ExternalServicesConfig: {
+  shape: class
+  +knowcrossConfig: KnowcrossConfig
+  +simphonyConfig: SimphonyConfig
+  +sinixConfig: SinixConfig
+}
+
+# API Routes Documentation
+api_routes: {
+  shape: text
+  label: |md
+    ## API Routes
+    - POST /webhook/whatsapp-group
+    - POST /webhook/whatsapp-personal
+    - POST /chat/digital-gm
+  |
+}
+# Relationships
+
+# External Service Inheritance
+ExternalServiceConnector -> KnowcrossConnector: inherits
+ExternalServiceConnector -> SimphonyConnector: inherits
+ExternalServiceConnector -> SinixConnector: inherits
+
+# Bot to Service Connections
+AskTwinGMBot -> KnowcrossConnector: uses
+AskTwinGMBot -> SimphonyConnector: uses
+AskTwinGMBot -> SinixConnector: uses
+
+CustomerServiceBot -> SimphonyConnector: uses
+CustomerServiceBot -> SinixConnector: uses
+
+FastFingerBot -> SinixConnector: uses
+
+# Existing Relationships
+Agent -> AskTwinGMBot: inherits
+Agent -> CustomerServiceBot: inherits
+Agent -> FastFingerBot: inherits
+
+FastAPIServer -> WebhookController: uses
+WebhookController -> FastFingerBot: "/webhook/whatsapp-group"
+WebhookController -> CustomerServiceBot: "/webhook/whatsapp-personal"
+WebhookController -> AskTwinGMBot: "/chat/digital-gm"
+
+# Configuration
+ExternalServicesConfig -> KnowcrossConnector: configures
+ExternalServicesConfig -> SimphonyConnector: configures
+ExternalServicesConfig -> SinixConnector: configures
