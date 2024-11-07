@@ -98,12 +98,11 @@ class FastFingerBot:
             if booking_response.booking_room:
                 logger.info(f"User is booking {booking_response.number_of_rooms} rooms")
                 is_possible = self.__calculate_if_possible(booking_response.number_of_rooms, available_rooms)
-                room_need_date = datetime.datetime.strptime(room_need.date, "%Y-%m-%d").strftime("%Y-%m-%d")
+                room_need_date = datetime.datetime.strptime(self.current_room_need_date, "%Y-%m-%d").strftime("%Y-%m-%d")
                 logger.info(f"Parsed room need date: {room_need_date}")
                 logger.info(f"Today's date: {room_need_date}")
                 # Get availability for today from the available_rooms dictionary
                 total_available = available_rooms[room_need_date]["availability"] if room_need_date in available_rooms else 0
-                self.current_room_need_date = room_need_date
 
                 logger.info(f"Is possible: {is_possible} Total available: {total_available}")
 
@@ -122,6 +121,7 @@ class FastFingerBot:
         if room_need.needs_rooms:
             try:
                 number_of_rooms = await self.__get_number_of_rooms(message)
+                room_need_date = datetime.datetime.strptime(number_of_rooms.date, "%Y-%m-%d").strftime("%Y-%m-%d")
                 logger.info(f"Number of rooms requested: {number_of_rooms.number_of_rooms}")
             except Exception as e:
                 logger.error(f"Error getting number of rooms: {e}")
@@ -134,6 +134,7 @@ class FastFingerBot:
                 logger.debug(f"Calculated available rooms: {available_rooms}")
                 if available_rooms != -1:
                     response = "RP Can"
+                    self.current_room_need_date = room_need_date
                     await send_whatsapp_message(response, chat_id, self.sent_first_message)
                 else:
                     response = "No, we cannot accommodate you."
