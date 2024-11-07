@@ -21,11 +21,13 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-async def send_whatsapp_message(response: str, chat_id: str, sent_first_message: bool):
-    if sent_first_message:
+async def send_whatsapp_message(response: str, chat_id: str, responding_to_our_message: bool):
+    if responding_to_our_message:
+        logger.info("First message already sent, not sending again")
         return
     logger.info(f"Sending WhatsApp message to chat_id={chat_id}")
     api_key = os.getenv("WHAPI_API_KEY")
+    
     if not api_key:
         logger.critical("WHAPI_API_KEY environment variable not set")
         raise ValueError("WHAPI_API_KEY environment variable not set")
@@ -42,7 +44,7 @@ async def send_whatsapp_message(response: str, chat_id: str, sent_first_message:
         }
         try:
             if response:
-                logger.debug(f"Sending POST request to WHAPI with data: {data}")
+                logger.info(f"Sending POST request to WHAPI with data: {data}")
                 resp = await client.post(
                     'https://gate.whapi.cloud/messages/text',
                     headers=headers,

@@ -38,19 +38,29 @@ async def post_whatsapp_group_payload(request: Request):
     print("Received webhook payload:", body)
     from_me = body.get("messages")[0].get("from_me")
     context = body.get("messages")[0].get("context", None)
-    if context:
-        print(f"Quoted message: {context} and hence it's a reply and not responding")
-    
-    elif from_me:
-        print(f"Message from self: {body.get('messages')[0]} and hence not responding")
+    type = body.get("messages")[0].get("type")
 
-    elif body.get("messages")[0].get("chat_id") == "120363337983594907@g.us":
-        print("Group message received from our Group")
-        response = await fast_finger_bot.handle_whatsapp_group(body.get('messages')[0].get('chat_id'), body.get('messages')[0].get('text').get('body'), body.get('messages')[0].get('from_name', 'no_name'))
-    else:
-        print("Message not from our group, ignoring")
+    if type == "text":
+        message = body.get("messages")[0].get("text").get("body")
+        # if context:
+        #     quoted_message = context.get("quoted_content").get("body")
+        #     print(f"Quoted message: {context} and hence it's a reply and not responding")
+        
+        # elif from_me:
+        #     print(f"Message from self: {body.get('messages')[0]} and hence not responding")
 
+        if body.get("messages")[0].get("chat_id") == "120363337983594907@g.us" or body.get("messages")[0].get("chat_id") == "120363317621911577@g.us":
+            print("Group message received from our Group")
+            response = await fast_finger_bot.handle_whatsapp_group(body.get('messages')[0].get('chat_id'), message , body.get('messages')[0].get('from_name', 'no_name'))
+        else:
+            print("Message not from our group, ignoring")
 
+    elif type == "action" and body.get("messages")[0].get("action").get("type") == "edit" and body.get("messages")[0].get("action").get("edited_type") == "text":
+        body = body.get("messages")[0].get("action").get("edited_content").get("body")
+        print("Action message received")
+        
+
+#I'll do this now
 @app.post("/webhooks/whatsapp_personal")
 async def post_whatsapp_personal_payload(message: Message):
     response = fast_finger_bot.handle_whatsapp_personal(message)
