@@ -1,22 +1,18 @@
 {
-    "standard": {
-        "availability": 15,
-        "price_per_night": 150.00
+    "2024-11-07": {
+        "availability": 10,
+        "price_per_night": 180.00
     },
-    "deluxe": {
-        "availability": 3,
-        "price_per_night": 200.00
+    "2024-11-08": {
+        "availability": 10,
+        "price_per_night": 180.00
     },
-    "executive_suite": {
-        "availability": 2,
-        "price_per_night": 350.00
+    "2024-11-09": {
+        "availability": 10,
+        "price_per_night": 180.00
     },
-    "family_suite": {
-        "availability": 1,
-        "price_per_night": 400.00
-    },
-    "presidential_suite": {
-        "availability": 1,
-        "price_per_night": 1000.00
+    "2024-11-10": {
+        "availability": 10,
+        "price_per_night": 180.00
     }
 }

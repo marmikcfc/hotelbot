@@ -24,18 +24,33 @@ NO. OF ROOMS
 
 SQ285/AKL/02NOV/STD 2225HRS
 
--> True
+-> True, 2024-11-02
 
 3. We will take from <hotel initials> 2 rooms and from <hotel initials> 3 rooms -> False
+
+4. NEW DELAYED SQ ARR
+
+SQ387/BCN/10NOV/ETA 0820HRS
+
+NO. OF ROOMS
+
+  2 ROOMS (ECONOMY)
+  1 ROOM (Business)
+
+ DEPARTURE :
+
+SQ285/AKL/12NOV/STD 2225HRS
+
+-> True, 2024-11-10
 """
 
 SYSTEM_PROMPT_NUMBER_OF_ROOMS = """
-You are a helpful assistant that determines the number of rooms a user needs.
+You are a helpful assistant that determines the number of rooms a user needs. Considering checkout of the hotel is at 12:00 PM, send out number of days
 """
 
 SYSTEM_PROMPT_BOOKING_ROOMS = """
 You are a helpful assistant that determines if a user is booking a room at Royal Plaza Hotel (RP)and the number of rooms they are booking.
-If user is booking a room, also respond with the number of rooms they are booking.
+If user is booking a room, also respond with the number of rooms they are booking. 
 
 ### Examples
 1. We will take from RP. All 3 rooms. -> true, 3

@@ -1,3 +1,4 @@
+import datetime
 import json
 import os
 import logging
@@ -29,6 +30,7 @@ logger = logging.getLogger(__name__)
 
 class RoomResponse(BaseModel):
     needs_rooms: bool
+    date: str #something
 
 class BookingResponse(BaseModel):
     booking_room: bool
@@ -36,6 +38,7 @@ class BookingResponse(BaseModel):
 
 class NumberOfRooms(BaseModel):
     number_of_rooms: int
+    date: str
 
 class FastFingerBot:
     def __init__(self):
@@ -85,7 +88,6 @@ class FastFingerBot:
             logger.debug(f"Available rooms: {available_rooms}")
         except Exception as e:
             logger.error(f"Error fetching available rooms: {e}")
-            #self.sent_first_message = True
             return
 
         if not room_need.needs_rooms:
@@ -96,14 +98,21 @@ class FastFingerBot:
             if booking_response.booking_room:
                 logger.info(f"User is booking {booking_response.number_of_rooms} rooms")
                 is_possible = self.__calculate_if_possible(booking_response.number_of_rooms, available_rooms)
-                total_available = sum(room['availability'] for room in available_rooms.values())
+                room_need_date = datetime.datetime.strptime(room_need.date, "%Y-%m-%d").strftime("%Y-%m-%d")
+                logger.info(f"Parsed room need date: {room_need_date}")
+                logger.info(f"Today's date: {room_need_date}")
+                # Get availability for today from the available_rooms dictionary
+                total_available = available_rooms[room_need_date]["availability"] if room_need_date in available_rooms else 0
+                self.current_room_need_date = room_need_date
+
                 logger.info(f"Is possible: {is_possible} Total available: {total_available}")
 
                 if is_possible == -1:
                     logger.info(f"Enough rooms not available")
-                    await self.whatsapp_confirmation(f"No, we cannot accommodate you for {booking_response.number_of_rooms} rooms. We can only accommodate {total_available} rooms.")
+                    await send_whatsapp_message(f"No, we cannot accommodate {booking_response.number_of_rooms} rooms.", chat_id, self.sent_first_message)
                 else:
                     logger.info(f"Enough rooms available")
+                    self.__update_available_rooms(booking_response.number_of_rooms)
                     await self.whatsapp_confirmation(f"SQ booking {booking_response.number_of_rooms} rooms")
             else:
                 logger.info("User is not booking rooms")
@@ -120,6 +129,7 @@ class FastFingerBot:
                 return
 
             try:
+                
                 available_rooms = self.__calculate_if_possible(number_of_rooms.number_of_rooms, available_rooms)
                 logger.debug(f"Calculated available rooms: {available_rooms}")
                 if available_rooms != -1:
@@ -145,7 +155,7 @@ class FastFingerBot:
         
         logger.debug("Determining if user needs rooms")
         messages = [
-            {"role": "system", "content": self.system_prompt_needs_rooms},
+            {"role": "system", "content": self.system_prompt_needs_rooms + "\n\nToday's date: " + datetime.datetime.now().strftime("%Y-%m-%d")},
             {"role": "user", "content": user_message}
         ]
         try:
@@ -170,7 +180,7 @@ class FastFingerBot:
         
         logger.info("Determining if user is booking rooms")
         messages = [
-            {"role": "system", "content": self.system_prompt_booking_rooms},
+            {"role": "system", "content": self.system_prompt_booking_rooms + "\n\nToday's date: " + datetime.datetime.now().strftime("%Y-%m-%d")},
             {"role": "user", "content": user_message}
         ]
         try:
@@ -192,7 +202,7 @@ class FastFingerBot:
     async def __get_number_of_rooms(self, user_message: str) -> NumberOfRooms:
         logger.debug("Fetching number of rooms required by user")
         messages = [
-            {"role": "system", "content": self.system_prompt_number_of_rooms},
+            {"role": "system", "content": self.system_prompt_number_of_rooms + "\n\nToday's date: " + datetime.datetime.now().strftime("%Y-%m-%d")},
             {"role": "user", "content": user_message}
         ]
         try:
@@ -227,13 +237,52 @@ class FastFingerBot:
             logger.error(f"Error decoding JSON from room requirements file: {e}")
             raise
 
+    def __update_available_rooms(self, rooms_to_book: int):
+        logger.debug(f"Updating available rooms, booking {rooms_to_book} rooms")
+        room_requirements_file = os.getenv("ROOM_REQUIREMENTS_FILE")
+        if not room_requirements_file:
+            logger.critical("ROOM_REQUIREMENTS_FILE environment variable not set")
+            raise ValueError("ROOM_REQUIREMENTS_FILE environment variable not set")
+
+        try:
+            with open(room_requirements_file, 'r') as f:
+                available_rooms = json.load(f)
+            
+            #today = datetime.datetime.now().strftime("%Y-%m-%d")
+            
+            if self.current_room_need_date not in available_rooms:
+                logger.error(f"No availability data for date: {self.current_room_need_date}")
+                raise ValueError(f"No availability data for date: {self.current_room_need_date}")
+                
+            if available_rooms[self.current_room_need_date]["availability"] < rooms_to_book:
+                logger.error("Not enough rooms available to book")
+                raise ValueError("Not enough rooms available to book")
+                
+            available_rooms[self.current_room_need_date]["availability"] -= rooms_to_book
+            logger.debug(f"Updated room availability to: {available_rooms[self.current_room_need_date]['availability']}")
+            
+            with open(room_requirements_file, 'w') as f:
+                json.dump(available_rooms, f, indent=4)
+                
+            return available_rooms
+        except FileNotFoundError:
+            logger.error(f"Room requirements file not found: {room_requirements_file}")
+            raise
+        except json.JSONDecodeError as e:
+            logger.error(f"Error handling JSON for room requirements file: {e}")
+            raise
+
     def __calculate_if_possible(self, room_requirements: Union[int, List[Tuple]], available_rooms: Dict[str, int]):
         logger.debug("Calculating room availability based on requirements")
         try:
             # Case 1: When room_requirements is an integer
             if isinstance(room_requirements, int):
-                total_available = sum(room['availability'] for room in available_rooms.values())
-                logger.debug(f"Total available rooms: {total_available}, Rooms needed: {room_requirements}")
+                # Get today's date in the required format
+                today = datetime.datetime.now().strftime("%Y-%m-%d")
+                logger.info(f"Today's date: {today}")
+                # Get availability for today from the available_rooms dictionary
+                total_available = available_rooms[today]["availability"] if today in available_rooms else 0
+                logger.info(f"Total available rooms: {total_available}, Rooms needed: {room_requirements}")
 
                 if total_available >= room_requirements:
                     logger.info("Sufficient rooms available")
