@@ -10,7 +10,7 @@ import httpx
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field
 from utils.utils import send_whatsapp_message
-from prompts import SYSTEM_PROMPT_BOOKING_ROOMS, SYSTEM_PROMPT_NEEDS_ROOMS, SYSTEM_PROMPT_NUMBER_OF_ROOMS
+from prompts import SYSTEM_PROMPT_BOOKING_ROOMS, SYSTEM_PROMPT_NEEDS_ROOMS, SYSTEM_PROMPT_NUMBER_OF_ROOMS, SYSTEM_PROMPT_CONFIRMATION_MENU, SYSTEM_PROMPT_OVERRIDE
 from utils import *
 
 from typing import TypedDict, Optional
@@ -23,6 +23,9 @@ import openai
 # dspy.settings.configure(lm=lm)
 # from dspy.teleprompt import BootstrapFewShotWithRandomSearch
 from utils.utils import send_whatsapp_message, calculate_hotel_days
+
+from enum import Enum
+from pydantic import BaseModel
 
 # Load environment variables
 load_dotenv()
@@ -57,6 +60,24 @@ class NumberOfRooms(BaseModel):
     number_of_rooms: int
     date: str
 
+
+class ResponseType(str, Enum):
+    SHUT_DOWN_AGENT = "shut_down_agent"
+    START_AGENT = "start_agent"
+    ROOMS_BOOKED_QUERY = "rooms_booked_query"
+    REPORT = "report"
+    OVERRIDE = "override"
+    OTHERS = "others"
+
+class ConfirmationResponse(BaseModel):
+    response_type: ResponseType
+    message: str
+
+class OverrideResponse(BaseModel):
+    date: str
+    number_of_rooms: int
+
+
 class FastFingerBot:
     def __init__(self):
         logger.info("Initializing FastFingerBot")
@@ -72,11 +93,14 @@ class FastFingerBot:
         self.system_prompt_needs_rooms = SYSTEM_PROMPT_NEEDS_ROOMS
         self.system_prompt_number_of_rooms = SYSTEM_PROMPT_NUMBER_OF_ROOMS
         self.system_prompt_booking_rooms = SYSTEM_PROMPT_BOOKING_ROOMS 
+        self.system_prompt_confirmation_menu = SYSTEM_PROMPT_CONFIRMATION_MENU
         self.sent_first_message = False
         self.confirmation_notification_chat_id = os.getenv("CONFIRMATION_NOTIFICATION_CHAT_ID")
         self.message = None
         self.current_state = None
         self.bids = []
+        self.shut_down_agent = False
+        self.agent_started = True
         
         # self.loaded_extractor = FlightInfoExtractor()
         # self.loaded_extractor.load("compiled_flight_info_extractor.dspy")
@@ -85,6 +109,10 @@ class FastFingerBot:
         self.arrival_date: Optional[str] = None
         self.departure_date: Optional[str] = None
 
+        self.report = {}
+        self.report_file = os.getenv("REPORT_FILE", "report.json")
+        self.__load_report()
+        
         logger.info("FastFingerBot initialization complete")
         
 
@@ -103,9 +131,86 @@ class FastFingerBot:
         logger.info("Whatsapp confirmation sent")
         return
     
+    async def __process_confirmation_group_message(self, message: str, user_id: str):
+        logger.info("Processing confirmation group message")
+        
+        messages = [
+            {"role": "system", "content": self.system_prompt_confirmation_menu},
+            {"role": "user", "content": message}
+        ]
+        
+        try:
+            response = await acompletion(
+                model="gpt-4o-mini",
+                messages=messages,
+                response_format=ConfirmationResponse
+            )
+            response = ConfirmationResponse.parse_obj(json.loads(response.choices[0].message.content))
+            logger.info(f"Confirmation response: {response}")
+            
+            if response.response_type == ResponseType.SHUT_DOWN_AGENT:
+                self.shut_down_agent = True
+                send_whatsapp_message(f"Successfully shut down agent", self.chat_id, self.sent_first_message)
+                
+            elif response.response_type == ResponseType.START_AGENT:
+                self.agent_started = True
+                send_whatsapp_message(f"Successfully started agent", self.chat_id, self.sent_first_message)
+                
+            elif response.response_type == ResponseType.ROOMS_BOOKED_QUERY:
+                send_whatsapp_message(f"We've booked {self.number_rooms_booked} rooms today", self.chat_id, self.sent_first_message)
+                
+            elif response.response_type == ResponseType.REPORT:
+                # Handle generating a report
+                pass
+            elif response.response_type == ResponseType.OVERRIDE:
+                # Handle overriding the agent's decision
+                try:
+                    override_messages = [
+                        {"role": "system", "content": SYSTEM_PROMPT_OVERRIDE},
+                        {"role": "user", "content": message}
+                    ]
+                    override_response = await acompletion(
+                        model="gpt-4o-mini",
+                        messages=override_messages,
+                        response_format=OverrideResponse
+                    )
+                    override_response = OverrideResponse.parse_obj(json.loads(override_response.choices[0].message.content))
+                    
+                    # Update the room availability for the specified date
+                    room_requirements_file = os.getenv("ROOM_REQUIREMENTS_FILE")
+                    with open(room_requirements_file, 'r') as f:
+                        available_rooms = json.load(f)
+                    
+                    available_rooms[override_response.date]["availability"] = override_response.number_of_rooms
+                    
+                    with open(room_requirements_file, 'w') as f:
+                        json.dump(available_rooms, f, indent=4)
+                    
+                    logger.info(f"Successfully overridden room availability for {override_response.date} to {override_response.number_of_rooms} rooms")
+                    
+                except Exception as e:
+                    logger.error(f"Error during override processing: {e}")
+                    raise
+            else:
+                logger.info(f"Unknown response type: {response.response_type}")
+                pass
+            
+        except Exception as e:
+            logger.error(f"Error during confirmation response processing: {e}")
+            raise
+
     async def handle_whatsapp_group(self, chat_id: str, message: str, user_id: str):
         if message == "RP Can":
             logger.info("RP Can message received, not sending response")
+            return
+        
+        if chat_id == self.confirmation_notification_chat_id:
+            logger.info("in confirmation notification chat, so invoking menu")
+            await self.__process_confirmation_group_message(message, user_id)
+            return
+        
+        if self.shut_down_agent:
+            logger.info("Agent is shut down, not processing message")
             return
         
         logger.info(f"Handling WhatsApp message from user_id={user_id} in chat_id={chat_id}")
@@ -116,6 +221,9 @@ class FastFingerBot:
         try:
             room_need = await self.__determine_room_need(message)
             logger.info(f"Room need determination: {room_need.needs_rooms}")
+            
+            # Update report with number of messages
+            self.__update_report(datetime.datetime.now().strftime("%Y-%m-%d"))
             
         except Exception as e:
             logger.error(f"Error determining room need: {e}")
@@ -184,7 +292,10 @@ class FastFingerBot:
             return
         
         if room_need.needs_rooms:
+
+            
             try:
+                self.__update_report(datetime.datetime.now(pytz.timezone('Asia/Singapore')).strftime("%Y-%m-%d"), message_from_airlines=True)
                 # Store arrival and departure dates as class variables
                 self.arrival_date = room_need.arrival_date
                 self.departure_date = room_need.departure_date
@@ -215,6 +326,10 @@ class FastFingerBot:
                     self.message = message
                     self.bids.append((message, number_of_rooms.number_of_rooms))
                     await send_whatsapp_message(response, chat_id, self.sent_first_message)
+                    
+                    # Update report with number of rooms booked
+                    self.__update_report(datetime.datetime.now().strftime("%Y-%m-%d"), number_of_rooms.number_of_rooms)
+                    
                 else:
                     response = "No, we cannot accommodate you."
                 logger.info(f"Response to user: {response}")
@@ -403,4 +518,25 @@ class FastFingerBot:
         except Exception as e:
             logger.error(f"Error during room availability calculation: {e}")
             raise
+    
+    def __load_report(self):
+        if os.path.exists(self.report_file):
+            with open(self.report_file, 'r') as f:
+                self.report = json.load(f)
+        else:
+            self.report = {}
+
+    def __save_report(self):
+        with open(self.report_file, 'w') as f:
+            json.dump(self.report, f, indent=4)
+
+    def __update_report(self, date: str, rooms_booked: int = 0, message_from_airlines: bool = False):
+        if date not in self.report:
+            self.report[date] = {"number_of_messages_from_airlines": 0, "number_of_rooms_booked": 0}
+        
+        if message_from_airlines:
+            self.report[date]["number_of_messages_from_airlines"] += 1
+        else:
+            self.report[date]["number_of_rooms_booked"] += rooms_booked
+        self.__save_report()
     
