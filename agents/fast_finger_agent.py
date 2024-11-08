@@ -18,10 +18,10 @@ from dataclasses import dataclass
 import json
 
 import openai
-from dspy import OpenAI
-lm = OpenAI(model='gpt-4o-mini')
-dspy.settings.configure(lm=lm)
-from dspy.teleprompt import BootstrapFewShotWithRandomSearch
+# from dspy import OpenAI
+# lm = OpenAI(model='gpt-4o-mini')
+# dspy.settings.configure(lm=lm)
+# from dspy.teleprompt import BootstrapFewShotWithRandomSearch
 from utils.utils import send_whatsapp_message, calculate_hotel_days
 
 # Load environment variables
@@ -168,6 +168,15 @@ class FastFingerBot:
             logger.info(f"Booking response: {booking_response}")        
             
             if booking_response.booking_room:
+                # if room_need.needs_rooms != self.current_state.needs_rooms:
+                #     logger.info(f"User needs rooms changed, not booking")
+
+                #     await send_whatsapp_message(
+                #         f"No, we cannot accommodate {booking_response.number_of_rooms} rooms for the selected dates.",
+                #         chat_id,
+                #         self.sent_first_message
+                #     )
+                #     return
                 logger.info(f"User is booking {booking_response.number_of_rooms} rooms")
                 try:
                     booking_days = await self.__calculate_booking_days(self.arrival_date, self.departure_date)
