@@ -49,7 +49,7 @@ async def post_whatsapp_group_payload(request: Request):
         # elif from_me:
         #     print(f"Message from self: {body.get('messages')[0]} and hence not responding")
 
-        if body.get("messages")[0].get("chat_id") == "120363337983594907@g.us" or body.get("messages")[0].get("chat_id") == "120363317621911577@g.us":
+        if body.get("messages")[0].get("chat_id") in os.getenv("WHATSAPP_GROUP_IDS").split(","):
             print("Group message received from our Group")
             response = await fast_finger_bot.handle_whatsapp_group(body.get('messages')[0].get('chat_id'), message , body.get('messages')[0].get('from_name', 'no_name'))
         else:
