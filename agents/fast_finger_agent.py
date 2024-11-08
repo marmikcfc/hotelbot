@@ -12,7 +12,6 @@ from utils.utils import send_whatsapp_message
 from prompts import SYSTEM_PROMPT_BOOKING_ROOMS, SYSTEM_PROMPT_NEEDS_ROOMS, SYSTEM_PROMPT_NUMBER_OF_ROOMS
 from utils import *
 
-import dspy
 from typing import TypedDict, Optional
 from dataclasses import dataclass
 import json
@@ -38,37 +37,6 @@ logging.basicConfig(
 )
 
 logger = logging.getLogger(__name__)
-
-
-
-# class ExtractFlightInfo(dspy.Signature):
-#     """Extracts information about flight details, room requirements, and timing from text."""
-#     input_text = dspy.InputField(desc="Text containing flight and room details")
-#     needs_rooms = dspy.OutputField(desc="Whether rooms are needed, represented as 'Yes' or 'No'")
-#     arrival_date = dspy.OutputField(desc="Arrival date in YYYY-MM-DD format")
-#     arrival_time = dspy.OutputField(desc="Arrival time in HH:MM format")
-#     departure_date = dspy.OutputField(desc="Departure date in YYYY-MM-DD format")
-#     departure_time = dspy.OutputField(desc="Departure time in HH:MM format")
-#     number_of_rooms = dspy.OutputField(desc="Number of rooms needed")
-
-# class FlightInfoExtractor(dspy.Module):
-#     def __init__(self):
-#         super().__init__()
-#         self.extract_info = dspy.ChainOfThought(ExtractFlightInfo)
-    
-#     def forward(self, input_text):
-#         prediction = self.extract_info(input_text=input_text)
-#         needs_rooms_bool = prediction.needs_rooms.strip().lower() == "yes"
-        
-#         return dspy.Prediction(
-#             needs_rooms=needs_rooms_bool,
-#             arrival_date=prediction.arrival_date,
-#             arrival_time=prediction.arrival_time,
-#             departure_date=prediction.departure_date,
-#             departure_time=prediction.departure_time,
-#             number_of_rooms=prediction.number_of_rooms
-#         )
-
 
 
 class BasicExtraction(BaseModel):
@@ -390,12 +358,24 @@ class FastFingerBot:
             dates = [current_date + datetime.timedelta(days=i) for i in range(booking_days)]
             date_strings = [date.strftime("%Y-%m-%d") for date in dates]
 
+            # Check for missing dates and add them
+            room_requirements_file = os.getenv("ROOM_REQUIREMENTS_FILE")
+            updated = False
+
             for date in date_strings:
-                available = available_rooms.get(date, 0)
-                logger.info(f"Date: {date}, Available Rooms: {available}")
-                if available['availability'] < room_requirements:
+                if date not in available_rooms:
+                    available_rooms[date] = {"availability": 10}
+                    logger.info(f"Added missing date {date} with 10 rooms")
+                    updated = True
+                
+                if available_rooms[date]['availability'] < room_requirements:
                     logger.warning(f"Insufficient rooms on {date}")
                     return False
+
+            # Save updated file if any dates were added
+            if updated:
+                with open(room_requirements_file, 'w') as f:
+                    json.dump(available_rooms, f, indent=4)
 
             logger.info("Sufficient rooms available for all booking dates")
             return True
