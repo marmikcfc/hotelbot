@@ -182,22 +182,22 @@ class FastFingerBot:
             else:
                 logger.info("User is not booking rooms")
             return
-
-
+        
         if room_need.needs_rooms:
             try:
                 # Store arrival and departure dates as class variables
                 self.arrival_date = room_need.arrival_date
                 self.departure_date = room_need.departure_date
 
-                # Check if arrival date is before today in Singapore timezone
-                sg_tz = pytz.timezone('Asia/Singapore')
-                sg_today = datetime.datetime.now(sg_tz).date()
-                arrival = datetime.datetime.strptime(self.arrival_date, "%Y-%m-%d").date()
+                # # Check if arrival date is before today in Singapore timezone
+                # sg_tz = pytz.timezone('Asia/Singapore')
+                # sg_today = datetime.datetime.now(sg_tz).date()
+                # arrival = datetime.datetime.strptime(self.arrival_date, "%Y-%m-%d").date()
                 
-                if arrival < sg_today:
-                    logger.info(f"Arrival date {arrival} is before today {sg_today}, not processing")
-                    return
+                # if arrival < sg_today:
+                #     logger.info(f"Arrival date {arrival} is before today {sg_today}, not processing")
+                #     return
+
 
                 number_of_rooms = await self.__get_number_of_rooms(message)
                 logger.info(f"Number of rooms requested: {number_of_rooms.number_of_rooms}")
@@ -245,8 +245,17 @@ class FastFingerBot:
             )
 
             response = BasicExtraction.parse_obj(json.loads(response.choices[0].message.content))
+
+            # Adjust arrival date if arrival time is before 1:00 PM
+            if response.arrival_time:
+                arrival_hour = int(response.arrival_time.split(":")[0])
+                if arrival_hour < 13:  # Before 1:00 PM
+                    arrival_date = datetime.datetime.strptime(response.arrival_date, "%Y-%m-%d")
+                    response.arrival_date = (arrival_date - datetime.timedelta(days=1)).strftime("%Y-%m-%d")
+                    logger.info(f"Adjusted arrival date to {response.arrival_date} due to early arrival time")
             logger.info(f"Room need response: {response}")
             return response
+        
         # try:
         #     response = self.loaded_extractor(user_message)
         #     logger.info(f"Room need response: {response}")
