@@ -3,6 +3,7 @@ import json
 import os
 import logging
 from litellm import OpenAI, acompletion
+import pytz
 from Message.message import Message
 from typing import Union, List, Tuple, Dict
 import httpx
@@ -76,6 +77,7 @@ class FastFingerBot:
         self.message = None
         self.current_state = None
         self.bids = []
+        
         # self.loaded_extractor = FlightInfoExtractor()
         # self.loaded_extractor.load("compiled_flight_info_extractor.dspy")
 
@@ -157,6 +159,8 @@ class FastFingerBot:
                     available_rooms
                 )
 
+
+
                 if not is_possible:
                     logger.info(f"Not enough rooms available, not booking")
                     await send_whatsapp_message(
@@ -186,6 +190,15 @@ class FastFingerBot:
                 self.arrival_date = room_need.arrival_date
                 self.departure_date = room_need.departure_date
 
+                # Check if arrival date is before today in Singapore timezone
+                sg_tz = pytz.timezone('Asia/Singapore')
+                sg_today = datetime.datetime.now(sg_tz).date()
+                arrival = datetime.datetime.strptime(self.arrival_date, "%Y-%m-%d").date()
+                
+                if arrival < sg_today:
+                    logger.info(f"Arrival date {arrival} is before today {sg_today}, not processing")
+                    return
+
                 number_of_rooms = await self.__get_number_of_rooms(message)
                 logger.info(f"Number of rooms requested: {number_of_rooms.number_of_rooms}")
             except Exception as e:
@@ -204,7 +217,6 @@ class FastFingerBot:
                     await send_whatsapp_message(response, chat_id, self.sent_first_message)
                 else:
                     response = "No, we cannot accommodate you."
-                    await send_whatsapp_message(response, chat_id, self.sent_first_message)
                 logger.info(f"Response to user: {response}")
             except Exception as e:
                 logger.error(f"Error calculating room availability: {e}")
