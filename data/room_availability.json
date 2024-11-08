@@ -1,18 +1,18 @@
 {
     "2024-11-07": {
-        "availability": 10,
-        "price_per_night": 180.00
+        "availability": 5,
+        "price_per_night": 180.0
     },
     "2024-11-08": {
-        "availability": 10,
-        "price_per_night": 180.00
+        "availability": 7,
+        "price_per_night": 180.0
     },
     "2024-11-09": {
         "availability": 10,
-        "price_per_night": 180.00
+        "price_per_night": 180.0
     },
     "2024-11-10": {
         "availability": 10,
-        "price_per_night": 180.00
+        "price_per_night": 180.0
     }
 }

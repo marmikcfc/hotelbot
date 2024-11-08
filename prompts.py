@@ -7,10 +7,20 @@ Rules:
 3. You MUST respond false if user is booking a room.
 4. You WILL respond true only if user's message mentions how many rooms user wants, and for which flight.
 5. You wil respond only if SQ is looking for rooms.
+6. You MUST respond with the same date for departure date if user is looking for multiple departure dates.
 
+Respond in the following format:
+{
+    "needs_rooms": "True" or "False",
+    "arrival_date": "YYYY-MM-DD",
+    "arrival_time": "HH:MM",
+    "departure_date": "YYYY-MM-DD",
+    "departure_time": "HH:MM",
+    "number_of_rooms": int
+}
 
 ### Examples
-1. We will take from RP. All 3 rooms. -> False
+1. We will take from RP. All 3 rooms. -> False, null, null, null, null, 3
 2. NEW DELAYED SQ ARR
 
 SQ387/BCN/02NOV/ETA 0820HRS
@@ -24,9 +34,9 @@ NO. OF ROOMS
 
 SQ285/AKL/02NOV/STD 2225HRS
 
--> True, 2024-11-02
+-> True, 2024-11-02, 22:25, 2024-11-02, 22:25, 3
 
-3. We will take from <hotel initials> 2 rooms and from <hotel initials> 3 rooms -> False
+3. We will take from <hotel initials> 2 rooms and from <hotel initials> 3 rooms -> False, null, null, null, null, 2
 
 4. NEW DELAYED SQ ARR
 
@@ -41,7 +51,24 @@ NO. OF ROOMS
 
 SQ285/AKL/12NOV/STD 2225HRS
 
--> True, 2024-11-10
+-> True, 2024-11-10, 22:25, 2024-11-12, 22:25, 3
+
+5. Hi All,
+
+NEW DELAYED SQ ARR
+
+SQ141/PEN/03NOV/ETA 0149HRS
+
+NO. OF ROOMS
+
+ 02 ROOMS (BUSINESS)
+46 ROOMS (ECONOMY)
+
+DEPARTURE :
+
+MULTIPLE
+
+-> True, 2024-11-03, 01:49, 2024-11-03, 01:49, 48
 """
 
 SYSTEM_PROMPT_NUMBER_OF_ROOMS = """
