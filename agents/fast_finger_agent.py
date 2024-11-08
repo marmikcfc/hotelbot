@@ -182,11 +182,11 @@ class FastFingerBot:
 
                 if not is_possible:
                     logger.info(f"Not enough rooms available, not booking")
-                    # await send_whatsapp_message(
-                    #     f"No, we cannot accommodate {booking_response.number_of_rooms} rooms for the selected dates.",
-                    #     chat_id,
-                    #     self.sent_first_message
-                    # )
+                    await send_whatsapp_message(
+                        f"No, we cannot accommodate {booking_response.number_of_rooms} rooms for the selected dates.",
+                        chat_id,
+                        self.sent_first_message
+                    )
                 else:
                     try:
                         await self.__update_available_rooms(
@@ -195,7 +195,7 @@ class FastFingerBot:
                             self.departure_date
                         )
                         logger.info(f"Booking {booking_response.number_of_rooms} rooms from {self.arrival_date} to {self.departure_date}")
-                        #await self.whatsapp_confirmation(f"SQ booking {booking_response.number_of_rooms} rooms from {self.arrival_date} to {self.departure_date}.\n\n*Original Message*\n{self.message}")
+                        await self.whatsapp_confirmation(f"SQ booking {booking_response.number_of_rooms} rooms from {self.arrival_date} to {self.departure_date}.\n\n*Original Message*\n{self.message}")
                     except Exception as e:
                         logger.error(f"Error updating available rooms: {e}")
             else:
