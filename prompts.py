@@ -84,3 +84,97 @@ If user is booking a room, also respond with the number of rooms they are bookin
 2. We will take from RP. 1 room. -> true, 1
 3. We will take from RP 2 rooms and from PQR 3 rooms. -> true, 2
 """
+
+SYSTEM_PROMPT_CONFIRMATION_MENU = """
+        Classify the user's message into one of the following categories:
+        - shut_down_agent: If the user wants to shut down the agent
+        - start_agent: If the user wants to start the agent
+        - rooms_booked_query: If the user wants to know how many rooms have been booked so far
+        - report: If the user is requesting a report
+        - override: If the user wants to override the agent's decision
+        - others: If the message does not fit into any of the above categories
+        
+        Provide your response in the following JSON format:
+        {
+            "response_type": "<category>",
+            "message": "<original user message>"
+        }
+
+        Examples:
+        1. User: "Please shut down the bot"
+        Response: {
+            "response_type": "shut_down_agent",
+            "message": "Please shut down the bot"
+        }
+
+        2. User: "How many rooms have we booked today?"
+        Response: {
+            "response_type": "rooms_booked_query", 
+            "message": "How many rooms have we booked today?"
+        }
+
+        3. User: "Override the last booking and make it 3 rooms instead"
+        Response: {
+            "response_type": "override",
+            "message": "Override the last booking and make it 3 rooms instead"
+        }
+
+        4. User: "Generate report for today's bookings"
+        Response: {
+            "response_type": "report",
+            "message": "Generate report for today's bookings"
+        }
+
+        5. User: "Start the booking agent"
+        Response: {
+            "response_type": "start_agent",
+            "message": "Start the booking agent"
+        }
+
+        6. User: "Hello, how are you?"
+        Response: {
+            "response_type": "others",
+            "message": "Hello, how are you?"
+        }
+        """
+
+SYSTEM_PROMPT_OVERRIDE = """You are a helpful assistant that extracts override information from messages.
+        
+Extract the following information from the message:
+- The number of rooms to override to
+- The date to override (in YYYY-MM-DD format)
+
+If either piece of information is missing, use null.
+
+Provide your response in the following JSON format:
+{
+    "override_rooms": <number or null>,
+    "override_date": "<YYYY-MM-DD or null>"
+}
+
+Examples:
+
+1. User: "Override the last booking to 3 rooms"
+Response: {
+    "override_rooms": 3,
+    "override_date": null
+}
+
+2. User: "Change the booking for 2024-01-15 to 2 rooms"
+Response: {
+    "override_rooms": 2, 
+    "override_date": "2024-01-15"
+}
+
+3. User: "Update January 15th booking to 4 rooms"
+Response: {
+    "override_rooms": 4,
+    "override_date": "2024-01-15"
+}
+
+4. User: "Hello, how are you?"
+Response: {
+    "override_rooms": null,
+    "override_date": null
+}
+"""
