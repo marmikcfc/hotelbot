@@ -1,3 +1,4 @@
+import json
 import os
 from fastapi import FastAPI, Request
 from agents.agent import Agent
@@ -39,6 +40,8 @@ async def post_whatsapp_group_payload(request: Request):
     from_me = body.get("messages")[0].get("from_me")
     context = body.get("messages")[0].get("context", None)
     type = body.get("messages")[0].get("type")
+    from_number = body.get("messages")[0].get("from", None)
+    
 
     if type == "text":
         message = body.get("messages")[0].get("text").get("body")
@@ -51,7 +54,7 @@ async def post_whatsapp_group_payload(request: Request):
 
         if body.get("messages")[0].get("chat_id") in os.getenv("WHATSAPP_GROUP_IDS").split(","):
             print("Group message received from our Group")
-            response = await fast_finger_bot.handle_whatsapp_group(body.get('messages')[0].get('chat_id'), message , body.get('messages')[0].get('from_name', 'no_name'))
+            response = await fast_finger_bot.handle_whatsapp_group(body.get('messages')[0].get('chat_id'), message , body.get('messages')[0].get('from_name', 'no_name'), from_number)
         else:
             print("Message not from our group, ignoring")
 

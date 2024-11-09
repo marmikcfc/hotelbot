@@ -91,50 +91,79 @@ SYSTEM_PROMPT_CONFIRMATION_MENU = """
         - start_agent: If the user wants to start the agent
         - rooms_booked_query: If the user wants to know how many rooms have been booked so far
         - report: If the user is requesting a report
-        - override: If the user wants to override the agent's decision
+        - override_rooms: Only the user wants to override the number of rooms available for a particular date
+        - rooms_empty_query: If the user wants to know how many rooms are empty or available for a particular date
+        - change_message_originator: If the user wants to change the message originator
+        - get_message_originator: If the user wants to simply get the message originator
+        - help: If the user wants to know what all commands are available
         - others: If the message does not fit into any of the above categories
         
         Provide your response in the following JSON format:
         {
-            "response_type": "<category>",
-            "message": "<original user message>"
+            "response_type": "<category>"
         }
 
         Examples:
         1. User: "Please shut down the bot"
         Response: {
-            "response_type": "shut_down_agent",
-            "message": "Please shut down the bot"
+            "response_type": "shut_down_agent"
         }
 
         2. User: "How many rooms have we booked today?"
         Response: {
-            "response_type": "rooms_booked_query", 
-            "message": "How many rooms have we booked today?"
+            "response_type": "rooms_booked_query"
         }
 
-        3. User: "Override the last booking and make it 3 rooms instead"
+        3. User: "Override the rooms for 2024-11-08 to 33"
         Response: {
-            "response_type": "override",
-            "message": "Override the last booking and make it 3 rooms instead"
+            "response_type": "override_rooms"
         }
 
         4. User: "Generate report for today's bookings"
         Response: {
-            "response_type": "report",
-            "message": "Generate report for today's bookings"
+            "response_type": "report"
         }
 
         5. User: "Start the booking agent"
         Response: {
-            "response_type": "start_agent",
-            "message": "Start the booking agent"
+            "response_type": "start_agent"
         }
 
         6. User: "Hello, how are you?"
         Response: {
-            "response_type": "others",
-            "message": "Hello, how are you?"
+            "response_type": "others"
+        }
+
+        7. User: "How many rooms are empty on 2024-11-08?"
+        Response: {
+            "response_type": "rooms_empty_query"
+        }
+
+        8. User: "Change the message originator to 24354242224"
+        Response: {
+            "response_type": "change_message_originator"
+        }
+
+        9. User: "What is the message originator?"
+        Response: {
+            "response_type": "get_message_originator"
+        }
+        10. User: "message originator"
+        Response: {
+            "response_type": "get_message_originator"
+        }
+
+        11. User: "Originator updated from 24354242224 to 24354242225"
+        Response: {
+            "response_type": "change_message_originator"
+        }
+        12. User: "Help"
+        Response: {
+            "response_type": "help"
+        }
+        13. User: "What can I do with this?"
+        Response: {
+            "response_type": "help"
         }
         """
 
@@ -177,4 +206,67 @@ Response: {
     "override_rooms": null,
     "override_date": null
 }
+"""
+SYSTEM_PROMPT_GET_DATE = """You are a helpful assistant that extracts date information from messages.
+
+Extract the date from the message. If no date is mentioned, use today's date.
+
+Return the date in YYYY-MM-DD format.
+
+Examples:
+
+1. User: "Book a room for January 15th"
+Response: "2024-01-15"
+
+2. User: "I need a booking for tomorrow"
+Response: "2024-01-09" (assuming today is 2024-01-08)
+
+3. User: "Reserve for next Monday"
+Response: "2024-01-15" (assuming today is 2024-01-08)
+
+4. User: "Book a room"
+Response: "2024-01-08" (assuming today is 2024-01-08)
+
+5. User: "I want to book for 15/01/24"
+Response: "2024-01-15"
+
+6. User: "Need a room on Jan 15"
+Response: "2024-01-15"
+
+Always return just the date string in YYYY-MM-DD format, with no additional text or formatting.
+
+### Today's Date: 
+{}
+ """
+
+SYSTEM_PROMPT_GET_ORIGINATOR = """You are a helpful assistant that extracts phone numbers from messages.
+
+Extract the originator phone number from the message. If no phone number is mentioned, return null.
+
+Return the without the +sign.
+
+Examples:
+
+1. User: "Change my originator to 07123456789 for future messages"
+Response: "07123456789"
+
+2. User: "I want all messages to come from 447123456789 from now on"
+Response: "447123456789"
+
+3. User: "Please update the sender number to +91 1234 542 233 for my account"
+Response: "911234542233"
+
+4. User: "Can you help me change my sending number to 0053 9493 9162 81?"
+Response: "539493916281"
+
+6. User: "Set my originator to 7555123456"
+Response: "+7555123456"
+
+7. User: "Book a room for tomorrow"
+Response: null
+
+8. User: "Hello, how are you?"
+Response: null
+
+Always return either a valid E.164 phone number or null, with no additional text or formatting.
 """
